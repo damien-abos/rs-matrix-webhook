@@ -1,0 +1,55 @@
+# config.example.toml
+# Copy to config.toml (or any path, then set CONFIG_FILE=/path/to/file).
+# Every option can also be set via environment variable with the same name
+# in UPPER_CASE (e.g.  MATRIX_URL=https://…  API_KEY=secret  PORT=4785).
+# Environment variables always override the config file.
+
+# ── HTTP server ─────────────────────────────────────────────────────────────
+
+## Listen address.  Empty string means all interfaces (0.0.0.0 / ::).
+host = ""
+
+## TCP port.
+port = 4785
+
+## Unix domain socket path (Linux/macOS).
+## When set, host/port are ignored.
+# server_path = "/run/matrix-webhook/webhook.sock"
+
+
+# ── Matrix ───────────────────────────────────────────────────────────────────
+
+## Homeserver URL.
+matrix_url = "https://matrix.org"
+
+## Full Matrix user ID of the bot account.
+matrix_id = "@mybot:matrix.org"
+
+## Authentication — provide exactly one of:
+##   matrix_token  preferred; no login round-trip on startup.
+##   matrix_pw     bot will log in on startup to obtain an access token.
+# matrix_token = "syt_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# matrix_pw    = "s3cr3t"
+
+
+# ── Webhook authentication ────────────────────────────────────────────────────
+
+## Shared secret.  Incoming requests must supply either:
+##   • { "key": "<api_key>" }  in the JSON body or as a query parameter, OR
+##   • { "digest": "<hex>" }   where hex = HMAC-SHA256(body, api_key).
+api_key = "change-me"
+
+
+# ── Formatters ───────────────────────────────────────────────────────────────
+
+## Directory containing custom Lua formatters.
+## Each <name>.lua file is registered as formatter "<name>" and can override
+## the built-in Rust formatters (github, grafana, gitlab_webhook, …).
+# formatters_dir = "./formatters"
+
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+
+## 0 = error  1 = warn  2 = info  3 = debug  4 = trace
+## Override at runtime with RUST_LOG=<filter>.
+verbosity = 2
