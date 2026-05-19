@@ -108,11 +108,7 @@ impl MatrixClient {
                 guard.insert(room_id.to_string());
             }
             Ok(resp) => {
-                tracing::warn!(
-                    "Could not join room {}: HTTP {}",
-                    room_id,
-                    resp.status()
-                );
+                tracing::warn!("Could not join room {}: HTTP {}", room_id, resp.status());
             }
             Err(e) => {
                 tracing::warn!("Could not join room {}: {:?}", room_id, e);

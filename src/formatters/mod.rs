@@ -86,7 +86,10 @@ impl FormatterRegistry {
             Some(FormatterImpl::Builtin(f)) => f(data, headers),
             Some(FormatterImpl::Lua(script)) => lua::call_formatter(script, data, headers),
             None => {
-                tracing::warn!("Unknown formatter '{}' — passing data through unchanged", name);
+                tracing::warn!(
+                    "Unknown formatter '{}' — passing data through unchanged",
+                    name
+                );
                 Ok(data)
             }
         }

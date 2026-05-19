@@ -21,10 +21,7 @@ pub fn github(mut data: Value, headers: &HashMap<String, String>) -> Result<Valu
         let before = data["before"].as_str().unwrap_or("");
         let compare = data["compare"].as_str().unwrap_or("");
 
-        let pusher_link = format!(
-            "[@{name}](https://github.com/{name})",
-            name = pusher_name
-        );
+        let pusher_link = format!("[@{name}](https://github.com/{name})", name = pusher_name);
         let mut body = format!(
             "{} pushed on {}: [{} → {}]({}):\n\n",
             pusher_link, refname, before, after, compare
@@ -150,10 +147,7 @@ pub fn gitlab_teams(mut data: Value, _headers: &HashMap<String, String>) -> Resu
         for section in sections {
             if let Some(text) = section["text"].as_str() {
                 // Split on double newlines, prefix each paragraph with "* ".
-                let items: Vec<String> = text
-                    .split("\n\n")
-                    .map(|t| format!("* {}", t))
-                    .collect();
+                let items: Vec<String> = text.split("\n\n").map(|t| format!("* {}", t)).collect();
                 body_parts.push(format!("\n{}", items.join("  \n")));
             } else if let (Some(title), Some(subtitle), Some(activity_text)) = (
                 section["activityTitle"].as_str(),

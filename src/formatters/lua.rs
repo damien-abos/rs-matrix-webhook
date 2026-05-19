@@ -15,11 +15,7 @@ pub fn call_formatter(
     run(script, data, headers).map_err(|e| anyhow::anyhow!("Lua error: {}", e))
 }
 
-fn run(
-    script: &str,
-    data: Value,
-    headers: &HashMap<String, String>,
-) -> mlua::Result<Value> {
+fn run(script: &str, data: Value, headers: &HashMap<String, String>) -> mlua::Result<Value> {
     let lua = Lua::new();
 
     lua.load(script).exec()?;

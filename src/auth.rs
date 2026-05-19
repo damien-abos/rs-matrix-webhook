@@ -6,8 +6,8 @@ use sha2::Sha256;
 /// This matches the digest authentication used by the original Python matrix-webhook:
 ///   hmac.new(api_key.encode(), request_body, sha256).hexdigest()
 pub fn verify_hmac(body: &[u8], api_key: &str, digest: &str) -> bool {
-    let mut mac = Hmac::<Sha256>::new_from_slice(api_key.as_bytes())
-        .expect("HMAC accepts any key length");
+    let mut mac =
+        Hmac::<Sha256>::new_from_slice(api_key.as_bytes()).expect("HMAC accepts any key length");
     mac.update(body);
     let expected = hex::encode(mac.finalize().into_bytes());
     // Constant-time comparison via hex strings (both are fixed-length hex)

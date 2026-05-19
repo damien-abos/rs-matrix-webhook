@@ -45,10 +45,7 @@ async fn main() -> anyhow::Result<()> {
     let matrix = MatrixClient::new(&settings).await?;
     let formatters = FormatterRegistry::new(&settings)?;
 
-    tracing::info!(
-        "Formatters available: {}",
-        formatters.names().join(", ")
-    );
+    tracing::info!("Formatters available: {}", formatters.names().join(", "));
 
     let state = Arc::new(AppState {
         settings,
@@ -74,7 +71,11 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // ── TCP ───────────────────────────────────────────────────────────────
-    let host = if state.settings.host.is_empty() { "0.0.0.0" } else { &state.settings.host };
+    let host = if state.settings.host.is_empty() {
+        "0.0.0.0"
+    } else {
+        &state.settings.host
+    };
     let addr = format!("{}:{}", host, state.settings.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     tracing::info!("Listening on {}", addr);
@@ -196,7 +197,11 @@ async fn handle_webhook(
 
     let header_map: HashMap<String, String> = http_headers
         .iter()
-        .filter_map(|(k, v)| v.to_str().ok().map(|s| (k.as_str().to_string(), s.to_string())))
+        .filter_map(|(k, v)| {
+            v.to_str()
+                .ok()
+                .map(|s| (k.as_str().to_string(), s.to_string()))
+        })
         .collect();
 
     let formatted = if let Some(ref name) = formatter_name {
@@ -237,7 +242,10 @@ async fn handle_webhook(
         }
         Err(e) => {
             tracing::error!("Matrix send error: {:#}", e);
-            err(StatusCode::INTERNAL_SERVER_ERROR, "Failed to send message to Matrix")
+            err(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to send message to Matrix",
+            )
         }
     }
 }
