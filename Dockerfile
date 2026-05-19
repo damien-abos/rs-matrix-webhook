@@ -12,7 +12,7 @@ ARG CARGO_ZIGBUILD_VERSION=0.19.8
 
 # cmake: needed to build vendored Lua 5.4 from source.
 # wget:  download Zig and cargo-zigbuild pre-built binaries.
-RUN apt-get update && apt-get install -y --no-install-recommends cmake wget \
+RUN apt-get update && apt-get install -y --no-install-recommends cmake wget xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Zig — architecture-aware so this also works when the builder is arm64
@@ -24,8 +24,9 @@ RUN case "${BUILDARCH}" in \
     esac \
     && wget -qO /tmp/zig.tar.xz \
         "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz" \
-    && tar -xJf /tmp/zig.tar.xz --strip-components=1 -C /usr/local/bin \
-        "zig-linux-${ZIG_ARCH}-${ZIG_VERSION}/zig" \
+    && mkdir -p /opt/zig \
+    && tar -xJf /tmp/zig.tar.xz --strip-components=1 -C /opt/zig \
+    && ln -s /opt/zig/zig /usr/local/bin/zig \
     && rm /tmp/zig.tar.xz
 
 # Install cargo-zigbuild from its own pre-built static binary (no recompilation).
