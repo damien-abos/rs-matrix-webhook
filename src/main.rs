@@ -145,6 +145,23 @@ async fn handle_webhook(
     http_headers: HeaderMap,
     raw_body: axum::body::Bytes,
 ) -> Response {
+    // ── 0. Trace raw request ───────────────────────────────────────────────
+    if tracing::enabled!(tracing::Level::TRACE) {
+        tracing::trace!(
+            path_room_id = ?path_room_id,
+            query.room_id = ?query.room_id,
+            query.formatter = ?query.formatter,
+            "incoming request"
+        );
+        if state.settings.verbosity >= 5 {
+            tracing::trace!(query.key = ?query.key, "request auth key");
+        }
+        for (name, value) in &http_headers {
+            tracing::trace!(header.name = %name, header.value = ?value, "request header");
+        }
+        tracing::trace!(body = %String::from_utf8_lossy(&raw_body), "request body");
+    }
+
     // ── 1. Parse JSON ──────────────────────────────────────────────────────
     let mut data: Value = match serde_json::from_slice(&raw_body) {
         Ok(v) => v,

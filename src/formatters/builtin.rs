@@ -180,7 +180,10 @@ pub fn discord(mut data: Value, _headers: &HashMap<String, String>) -> Result<Va
             data["content"].as_str().unwrap_or(""),
         ));
     } else if has_username {
-        text.push_str(&format!("**{}**\n\n", data["username"].as_str().unwrap_or("")));
+        text.push_str(&format!(
+            "**{}**\n\n",
+            data["username"].as_str().unwrap_or("")
+        ));
     } else if has_content {
         text.push_str(&format!("{}\n\n", data["content"].as_str().unwrap_or("")));
     }
