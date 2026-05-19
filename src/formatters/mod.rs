@@ -38,6 +38,7 @@ impl FormatterRegistry {
 
         // Built-in Rust formatters
         for (name, f) in [
+            ("discord", builtin::discord as BuiltinFn),
             ("github", builtin::github as BuiltinFn),
             ("grafana", builtin::grafana as BuiltinFn),
             ("gitlab_webhook", builtin::gitlab_webhook as BuiltinFn),

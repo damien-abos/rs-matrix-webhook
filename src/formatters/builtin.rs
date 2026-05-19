@@ -164,6 +164,71 @@ pub fn gitlab_teams(mut data: Value, _headers: &HashMap<String, String>) -> Resu
 }
 
 // ---------------------------------------------------------------------------
+// Discord
+// ---------------------------------------------------------------------------
+
+pub fn discord(mut data: Value, _headers: &HashMap<String, String>) -> Result<Value> {
+    let mut text = String::new();
+
+    let has_username = data["username"].is_string();
+    let has_content = data["content"].is_string();
+
+    if has_username && has_content {
+        text.push_str(&format!(
+            "**{}**: {}\n\n",
+            data["username"].as_str().unwrap_or(""),
+            data["content"].as_str().unwrap_or(""),
+        ));
+    } else if has_username {
+        text.push_str(&format!("**{}**\n\n", data["username"].as_str().unwrap_or("")));
+    } else if has_content {
+        text.push_str(&format!("{}\n\n", data["content"].as_str().unwrap_or("")));
+    }
+
+    if let Some(embeds) = data["embeds"].as_array().map(|a| a.to_owned()) {
+        for embed in &embeds {
+            if let Some(name) = embed["author"]["name"].as_str() {
+                if let Some(url) = embed["author"]["url"].as_str() {
+                    text.push_str(&format!("[{}]({})\n", name, url));
+                } else {
+                    text.push_str(&format!("{}\n", name));
+                }
+            }
+
+            if let Some(title) = embed["title"].as_str() {
+                if let Some(url) = embed["url"].as_str() {
+                    text.push_str(&format!("#### [{}]({})\n\n", title, url));
+                } else {
+                    text.push_str(&format!("#### {}\n\n", title));
+                }
+            }
+
+            if let Some(desc) = embed["description"].as_str() {
+                text.push_str(&format!("{}\n\n", desc));
+            }
+
+            if let Some(fields) = embed["fields"].as_array() {
+                for field in fields {
+                    let name = field["name"].as_str().unwrap_or("");
+                    let value = field["value"].as_str().unwrap_or("");
+                    text.push_str(&format!("**{}**: {}\n", name, value));
+                }
+                if !fields.is_empty() {
+                    text.push('\n');
+                }
+            }
+
+            if let Some(footer) = embed["footer"]["text"].as_str() {
+                text.push_str(&format!("{}\n", footer));
+            }
+        }
+    }
+
+    data["body"] = Value::String(text);
+    Ok(data)
+}
+
+// ---------------------------------------------------------------------------
 // Identity (pass-through)
 // ---------------------------------------------------------------------------
 
