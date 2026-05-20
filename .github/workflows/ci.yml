@@ -60,7 +60,7 @@ jobs:
 
       # QEMU is required only for the distroless runtime image manifest
       # resolution; the build stage itself cross-compiles natively via Zig.
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
