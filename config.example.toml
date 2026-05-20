@@ -37,7 +37,7 @@ matrix_id = "@mybot:matrix.org"
 ## Shared secret.  Incoming requests must supply either:
 ##   • { "key": "<api_key>" }  in the JSON body or as a query parameter, OR
 ##   • { "digest": "<hex>" }   where hex = HMAC-SHA256(body, api_key).
-api_key = "change-me"
+#api_key = "change-me"
 
 
 # ── Formatters ───────────────────────────────────────────────────────────────
@@ -50,6 +50,6 @@ api_key = "change-me"
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 
-## 0 = error  1 = warn  2 = info  3 = debug  4 = trace
+## 0 = error  1 = warn  2 = info  3 = debug  4 = trace  5 = secrets
 ## Override at runtime with RUST_LOG=<filter>.
 verbosity = 2
