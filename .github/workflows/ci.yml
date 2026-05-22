@@ -2,93 +2,137 @@ name: CI
 
 on:
   push:
-    branches: [main]
-    tags: ["v*"]
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
   pull_request:
+    branches:
+      - main
+  schedule:
+    # Re-scan weekly to detect new CVEs in dependencies; also serves as a canary for breakages on non-amd64 platforms.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
 
 jobs:
-  check:
-    name: Check & Clippy
+  build:
+    name: Build & Publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo check --locked
-      - run: cargo clippy --locked -- -D warnings
+      - uses: actions/checkout@v6
 
-  fmt:
-    name: Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
       - run: cargo fmt --check
 
-  build:
-    name: Build (release)
-    runs-on: ubuntu-latest
-    needs: check
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --locked -- -D warnings
+
       - run: cargo build --release --locked
+
       - uses: actions/upload-artifact@v4
         with:
           name: matrix-webhook-linux-amd64
           path: target/release/matrix-webhook
           retention-days: 7
 
-  docker:
-    name: Docker build (amd64 + arm64)
-    runs-on: ubuntu-latest
-    needs: check
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-
-      # QEMU is required only for the distroless runtime image manifest
-      # resolution; the build stage itself cross-compiles natively via Zig.
-      - uses: docker/setup-qemu-action@v3
+      # QEMU is only needed to resolve the distroless multi-platform manifest;
+      # the Rust build itself cross-compiles natively via cargo-zigbuild.
+      - uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v3
-        if: startsWith(github.ref, 'refs/tags/')
+      - uses: docker/login-action@v4
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/metadata-action@v5
+      - uses: docker/login-action@v4
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v6
         id: meta
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: |
+            ghcr.io/${{ github.repository }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/matrix-webhook
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+            type=raw,value=edge,enable={{is_default_branch}}
 
-      - uses: docker/build-push-action@v6
+      - name: Build and push (amd64 + arm64)
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ startsWith(github.ref, 'refs/tags/') }}
+          push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # buildx cannot --push and --load simultaneously for multi-platform;
+      # rebuild amd64 only from cache (fast) to get a local image for Trivy.
+      - name: Export amd64 image for Trivy
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: matrix-webhook:scan
+          cache-from: type=gha
+
+      - run: docker save matrix-webhook:scan -o /tmp/image-amd64.tar
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-amd64
+          path: /tmp/image-amd64.tar
+          retention-days: 1
+
+  trivy:
+    name: Trivy scan
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: docker-image-amd64
+          path: /tmp
+
+      - uses: aquasecurity/trivy-action@0.36.0
+        with:
+          input: /tmp/image-amd64.tar
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif

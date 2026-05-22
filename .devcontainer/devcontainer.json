@@ -2,7 +2,8 @@
   "name": "rs-matrix-webhook",
   "image": "mcr.microsoft.com/devcontainers/rust:1-trixie",
   "features": {
-    "ghcr.io/devcontainers/features/common-utils:2": {}
+    "ghcr.io/devcontainers/features/common-utils:2": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "onCreateCommand": "rustup component add clippy rustfmt",
   "customizations": {
@@ -22,6 +23,8 @@
       }
     }
   },
-  "forwardPorts": [4785],
+  "forwardPorts": [
+    4785
+  ],
   "remoteUser": "vscode"
 }

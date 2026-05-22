@@ -57,14 +57,13 @@ impl FormatterRegistry {
                 for entry in std::fs::read_dir(dir_path)? {
                     let entry = entry?;
                     let path = entry.path();
-                    if path.extension().map(|e| e == "lua").unwrap_or(false) {
-                        if let Some(name) =
+                    if path.extension().map(|e| e == "lua").unwrap_or(false)
+                        && let Some(name) =
                             path.file_stem().and_then(|s| s.to_str()).map(String::from)
-                        {
-                            let script = std::fs::read_to_string(&path)?;
-                            tracing::info!("Loaded Lua formatter: {}", name);
-                            formatters.insert(name, FormatterImpl::Lua(script));
-                        }
+                    {
+                        let script = std::fs::read_to_string(&path)?;
+                        tracing::info!("Loaded Lua formatter: {}", name);
+                        formatters.insert(name, FormatterImpl::Lua(script));
                     }
                 }
             } else {

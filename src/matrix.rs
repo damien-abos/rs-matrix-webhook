@@ -4,7 +4,7 @@ use tokio::sync::RwLock;
 
 use anyhow::{Context, Result};
 use reqwest::Client;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::config::Settings;

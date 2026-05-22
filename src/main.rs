@@ -8,14 +8,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use axum::{
+    Json, Router,
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
-    Json, Router,
 };
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use config::Settings;
@@ -201,10 +201,10 @@ async fn handle_webhook(
     };
 
     // ── 4. Legacy 'text' field alias ───────────────────────────────────────
-    if let Some(obj) = data.as_object_mut() {
-        if let Some(text) = obj.remove("text") {
-            obj.entry("body").or_insert(text);
-        }
+    if let Some(obj) = data.as_object_mut()
+        && let Some(text) = obj.remove("text")
+    {
+        obj.entry("body").or_insert(text);
     }
 
     // ── 5. Apply formatter (query > body) ─────────────────────────────────
