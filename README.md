@@ -32,12 +32,39 @@ curl -X POST http://localhost:4785/!yourroom:matrix.example.com \
   -d '{"key":"your-api-key","body":"Hello from webhook!"}'
 ```
 
+## Command-line options
+
+```
+matrix-webhook [OPTIONS]
+```
+
+| Flag | Short | Description | Default |
+|---|---|---|---|
+| `--host <ADDR>` | | Listen address | `""` (all interfaces) |
+| `--port <PORT>` | `-p` | TCP port | `4785` |
+| `--server-path <PATH>` | | Unix socket path — overrides `--host`/`--port` | — |
+| `--matrix-url <URL>` | | Homeserver URL | `https://matrix.org` |
+| `--matrix-id <ID>` | | Bot Matrix user ID (e.g. `@bot:matrix.org`) | **required** |
+| `--matrix-token <TOKEN>` | | Access token (preferred over `--matrix-pw`) | — |
+| `--matrix-pw <PASSWORD>` | | Password — used to obtain an access token on startup | — |
+| `--api-key <KEY>` | | Shared webhook secret | **required** |
+| `--formatters-dir <DIR>` | | Directory of custom Lua formatters | — |
+| `--config <FILE>` | `-c` | TOML config file (default: `config.toml` in working dir) | — |
+| `-v` | | Verbosity (repeatable): `-v`=warn `-vv`=info `-vvv`=debug `-vvvv`=trace | `-vv` |
+| `--version` | `-V` | Print version and exit | |
+| `--help` | `-h` | Print help | |
+
 ## Configuration
 
-All options can be set in `config.toml` **or** as environment variables (same name, upper-case).
-Environment variables take precedence over the file.
+Configuration is loaded from multiple sources in priority order (highest first):
 
-A different config file path can be specified with `CONFIG_FILE=/path/to/file`.
+1. **CLI flags** — `matrix-webhook --port 8080 …`
+2. **Environment variables** — same name, upper-case (e.g. `PORT`, `API_KEY`)
+3. **Config file** — path from `--config`/`-c` or `CONFIG_FILE` env var
+4. **`config.toml`** — looked up in the working directory
+5. **Built-in defaults**
+
+All options available as CLI flags are also available as TOML keys and environment variables.
 
 | Key | Env var | Default | Description |
 |---|---|---|---|

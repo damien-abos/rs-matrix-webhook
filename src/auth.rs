@@ -13,3 +13,45 @@ pub fn verify_hmac(body: &[u8], api_key: &str, digest: &str) -> bool {
     // Constant-time comparison via hex strings (both are fixed-length hex)
     expected == digest
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_digest(body: &[u8], key: &str) -> String {
+        let mut mac = Hmac::<Sha256>::new_from_slice(key.as_bytes()).unwrap();
+        mac.update(body);
+        hex::encode(mac.finalize().into_bytes())
+    }
+
+    #[test]
+    fn correct_digest_accepted() {
+        let body = b"{\"body\":\"hello\"}";
+        let digest = make_digest(body, "secret");
+        assert!(verify_hmac(body, "secret", &digest));
+    }
+
+    #[test]
+    fn wrong_digest_rejected() {
+        assert!(!verify_hmac(b"hello", "secret", "deadbeef"));
+    }
+
+    #[test]
+    fn wrong_key_rejected() {
+        let body = b"hello";
+        let digest = make_digest(body, "correct-key");
+        assert!(!verify_hmac(body, "wrong-key", &digest));
+    }
+
+    #[test]
+    fn tampered_body_rejected() {
+        let digest = make_digest(b"original body", "key");
+        assert!(!verify_hmac(b"tampered body", "key", &digest));
+    }
+
+    #[test]
+    fn empty_body_accepted() {
+        let digest = make_digest(b"", "key");
+        assert!(verify_hmac(b"", "key", &digest));
+    }
+}

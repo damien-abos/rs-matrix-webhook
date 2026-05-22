@@ -257,3 +257,228 @@ pub fn grn(mut data: Value, _headers: &HashMap<String, String>) -> Result<Value>
 
     Ok(data)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn no_headers() -> HashMap<String, String> {
+        HashMap::new()
+    }
+
+    // ── identity ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn identity_passes_through() {
+        let data = json!({"body": "hello", "extra": 42});
+        let result = identity(data.clone(), &no_headers()).unwrap();
+        assert_eq!(result, data);
+    }
+
+    // ── github ────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn github_push_formats_body() {
+        let data = json!({
+            "pusher": {"name": "alice"},
+            "ref": "refs/heads/main",
+            "before": "aaa",
+            "after": "bbb",
+            "compare": "https://github.com/org/repo/compare/aaa...bbb",
+            "commits": [
+                {"message": "fix bug", "url": "https://github.com/org/repo/commit/bbb"}
+            ]
+        });
+        let mut headers = HashMap::new();
+        headers.insert("x-github-event".to_string(), "push".to_string());
+
+        let result = github(data, &headers).unwrap();
+        let body = result["body"].as_str().unwrap();
+        assert!(body.contains("[@alice](https://github.com/alice)"));
+        assert!(body.contains("refs/heads/main"));
+        assert!(body.contains("aaa"));
+        assert!(body.contains("bbb"));
+        assert!(body.contains("[fix bug](https://github.com/org/repo/commit/bbb)"));
+    }
+
+    #[test]
+    fn github_non_push_gives_generic_body() {
+        let data = json!({});
+        let mut headers = HashMap::new();
+        headers.insert("x-github-event".to_string(), "ping".to_string());
+
+        let result = github(data, &headers).unwrap();
+        assert_eq!(result["body"].as_str().unwrap(), "notification from github");
+    }
+
+    #[test]
+    fn github_hub_signature_sets_digest() {
+        let data = json!({});
+        let mut headers = HashMap::new();
+        headers.insert("x-github-event".to_string(), "push".to_string());
+        headers.insert(
+            "x-hub-signature-256".to_string(),
+            "sha256=abcdef1234".to_string(),
+        );
+
+        let result = github(data, &headers).unwrap();
+        assert_eq!(result["digest"].as_str().unwrap(), "abcdef1234");
+    }
+
+    // ── grafana ───────────────────────────────────────────────────────────────
+
+    #[test]
+    fn grafana_v8_formats_title_and_metrics() {
+        let data = json!({
+            "title": "Disk Alert",
+            "message": "Disk is full",
+            "ruleName": "disk-rule",
+            "evalMatches": [
+                {"metric": "disk_used", "value": 95}
+            ]
+        });
+        let result = grafana(data, &no_headers()).unwrap();
+        let body = result["body"].as_str().unwrap();
+        assert!(body.contains("Disk Alert"));
+        assert!(body.contains("Disk is full"));
+        assert!(body.contains("disk_used"));
+        assert!(body.contains("95"));
+    }
+
+    #[test]
+    fn grafana_9x_dispatches_on_alerts_array() {
+        let data = json!({
+            "title": "CPU Alert",
+            "message": "CPU high",
+            "alerts": [{"status": "firing"}]
+        });
+        let result = grafana(data, &no_headers()).unwrap();
+        let body = result["body"].as_str().unwrap();
+        assert!(body.contains("CPU Alert"));
+        assert!(body.contains("CPU high"));
+    }
+
+    // ── gitlab_webhook ────────────────────────────────────────────────────────
+
+    #[test]
+    fn gitlab_webhook_formats_event_summary() {
+        let data = json!({
+            "event_name": "push",
+            "user_name": "bob",
+            "project": {"name": "myrepo", "web_url": "https://gitlab.com/org/myrepo"}
+        });
+        let result = gitlab_webhook(data, &no_headers()).unwrap();
+        let body = result["body"].as_str().unwrap();
+        assert!(body.contains("push"));
+        assert!(body.contains("myrepo"));
+        assert!(body.contains("bob"));
+    }
+
+    #[test]
+    fn gitlab_webhook_token_sets_key() {
+        let data = json!({"event_name": "push", "user_name": "x", "project": {}});
+        let mut headers = HashMap::new();
+        headers.insert("x-gitlab-token".to_string(), "tok123".to_string());
+
+        let result = gitlab_webhook(data, &headers).unwrap();
+        assert_eq!(result["key"].as_str().unwrap(), "tok123");
+    }
+
+    // ── gitlab_gchat ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn gitlab_gchat_converts_links() {
+        let data = json!({"body": "see <https://example.com|here> for details"});
+        let result = gitlab_gchat(data, &no_headers()).unwrap();
+        assert_eq!(
+            result["body"].as_str().unwrap(),
+            "see [here](https://example.com) for details"
+        );
+    }
+
+    #[test]
+    fn gitlab_gchat_no_body_is_noop() {
+        let data = json!({"other": "field"});
+        let result = gitlab_gchat(data.clone(), &no_headers()).unwrap();
+        assert_eq!(result, data);
+    }
+
+    // ── gitlab_teams ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn gitlab_teams_text_sections_joined() {
+        let data = json!({
+            "sections": [
+                {"text": "first paragraph\n\nsecond paragraph"},
+                {"text": "another section"}
+            ]
+        });
+        let result = gitlab_teams(data, &no_headers()).unwrap();
+        let body = result["body"].as_str().unwrap();
+        assert!(body.contains("* first paragraph"));
+        assert!(body.contains("* another section"));
+    }
+
+    #[test]
+    fn gitlab_teams_activity_sections() {
+        let data = json!({
+            "sections": [{
+                "activityTitle": "Alice",
+                "activitySubtitle": "pushed",
+                "activityText": "3 commits"
+            }]
+        });
+        let result = gitlab_teams(data, &no_headers()).unwrap();
+        let body = result["body"].as_str().unwrap();
+        assert!(body.contains("Alice"));
+        assert!(body.contains("pushed"));
+        assert!(body.contains("3 commits"));
+    }
+
+    // ── discord ───────────────────────────────────────────────────────────────
+
+    #[test]
+    fn discord_username_and_content() {
+        let data = json!({"username": "bot", "content": "hello world"});
+        let result = discord(data, &no_headers()).unwrap();
+        let body = result["body"].as_str().unwrap();
+        assert!(body.contains("**bot**"));
+        assert!(body.contains("hello world"));
+    }
+
+    #[test]
+    fn discord_embed_with_title_and_description() {
+        let data = json!({
+            "embeds": [{
+                "title": "Alert",
+                "url": "https://example.com",
+                "description": "Something happened",
+                "fields": [{"name": "severity", "value": "high"}]
+            }]
+        });
+        let result = discord(data, &no_headers()).unwrap();
+        let body = result["body"].as_str().unwrap();
+        assert!(body.contains("[Alert](https://example.com)"));
+        assert!(body.contains("Something happened"));
+        assert!(body.contains("**severity**: high"));
+    }
+
+    // ── grn ───────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn grn_formats_release_announcement() {
+        let data = json!({
+            "version": "v1.2.3",
+            "title": "Bug fixes",
+            "author": "alice",
+            "package_name": "org/myapp"
+        });
+        let result = grn(data, &no_headers()).unwrap();
+        let body = result["body"].as_str().unwrap();
+        assert!(body.contains("### org/myapp - v1.2.3"));
+        assert!(body.contains("Bug fixes"));
+        assert!(body.contains("alice"));
+        assert!(body.contains("https://github.com/org/myapp/releases/tag/v1.2.3"));
+    }
+}

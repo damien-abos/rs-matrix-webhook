@@ -5,7 +5,8 @@
     "ghcr.io/devcontainers/features/common-utils:2": {},
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
-  "onCreateCommand": "rustup component add clippy rustfmt",
+  "onCreateCommand": "rustup component add clippy rustfmt llvm-tools-preview",
+  "postCreateCommand": "curl -LsSf https://github.com/taiki-e/cargo-llvm-cov/releases/latest/download/cargo-llvm-cov-$(uname -m)-unknown-linux-musl.tar.gz | tar xzf - -C ~/.cargo/bin",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -13,13 +14,19 @@
         "vadimcn.vscode-lldb",
         "serayuzgur.crates",
         "tamasfe.even-better-toml",
-        "sumneko.lua"
+        "sumneko.lua",
+        "ryanluker.vscode-coverage-gutters"
       ],
       "settings": {
         "editor.formatOnSave": true,
         "[rust]": {
           "editor.defaultFormatter": "rust-lang.rust-analyzer"
-        }
+        },
+        "coverage-gutters.coverageFileNames": [
+          "lcov.info"
+        ],
+        "coverage-gutters.showLineCoverage": true,
+        "coverage-gutters.showRulerCoverage": true
       }
     }
   },

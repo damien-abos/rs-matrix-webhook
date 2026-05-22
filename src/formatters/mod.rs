@@ -101,3 +101,57 @@ impl FormatterRegistry {
         names
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Settings;
+    use serde_json::json;
+
+    fn test_settings() -> Settings {
+        Settings {
+            host: String::new(),
+            port: 4785,
+            server_path: None,
+            matrix_url: "https://matrix.org".to_string(),
+            matrix_id: "@bot:test.org".to_string(),
+            matrix_pw: None,
+            matrix_token: Some("token".to_string()),
+            api_key: "test-key".to_string(),
+            formatters_dir: None,
+            verbosity: 0,
+        }
+    }
+
+    #[test]
+    fn names_are_sorted_and_contain_builtins() {
+        let registry = FormatterRegistry::new(&test_settings()).unwrap();
+        let names = registry.names();
+        assert!(names.contains(&"github"));
+        assert!(names.contains(&"grafana"));
+        assert!(names.contains(&"identity"));
+        assert!(names.contains(&"discord"));
+        // sorted check: each element <= next
+        assert!(names.windows(2).all(|w| w[0] <= w[1]));
+    }
+
+    #[test]
+    fn apply_known_formatter() {
+        let registry = FormatterRegistry::new(&test_settings()).unwrap();
+        let data = json!({"body": "hello"});
+        let result = registry
+            .apply("identity", data.clone(), &HashMap::new())
+            .unwrap();
+        assert_eq!(result, data);
+    }
+
+    #[test]
+    fn apply_unknown_formatter_returns_data_unchanged() {
+        let registry = FormatterRegistry::new(&test_settings()).unwrap();
+        let data = json!({"body": "test", "extra": 1});
+        let result = registry
+            .apply("nonexistent", data.clone(), &HashMap::new())
+            .unwrap();
+        assert_eq!(result, data);
+    }
+}

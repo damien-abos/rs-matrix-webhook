@@ -38,6 +38,8 @@ jobs:
 
       - run: cargo clippy --locked -- -D warnings
 
+      - run: cargo test --locked
+
       - run: cargo build --release --locked
 
       - uses: actions/upload-artifact@v7
@@ -110,6 +112,38 @@ jobs:
           name: docker-image-amd64
           path: /tmp/image-amd64.tar
           retention-days: 1
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    # Only on real pushes — no point measuring coverage on PRs or the weekly scan.
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # Separate cache key so coverage build doesn't pollute the build job's cache.
+          prefix-key: coverage
+
+      - uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Run tests with coverage
+        run: cargo llvm-cov --locked --lcov --output-path lcov.info
+
+      - name: Print coverage summary
+        run: cargo llvm-cov report --locked
+
+      - uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          fail_ci_if_error: false
+          # Set CODECOV_TOKEN secret to enable upload on private repositories.
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   trivy:
     name: Trivy scan

@@ -119,3 +119,74 @@ fn lua_to_json(value: LuaValue) -> mlua::Result<Value> {
         _ => Ok(Value::Null),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn sets_body_field() {
+        let script = r#"
+            function format(data, headers)
+                data.body = "hello from lua"
+                return data
+            end
+        "#;
+        let result = call_formatter(script, json!({}), &HashMap::new()).unwrap();
+        assert_eq!(result["body"], "hello from lua");
+    }
+
+    #[test]
+    fn reads_data_fields() {
+        let script = r#"
+            function format(data, headers)
+                data.body = "value=" .. data.input
+                return data
+            end
+        "#;
+        let result = call_formatter(script, json!({"input": "test"}), &HashMap::new()).unwrap();
+        assert_eq!(result["body"], "value=test");
+    }
+
+    #[test]
+    fn reads_headers() {
+        let script = r#"
+            function format(data, headers)
+                data.body = headers["x-event"]
+                return data
+            end
+        "#;
+        let mut headers = HashMap::new();
+        headers.insert("x-event".to_string(), "push".to_string());
+        let result = call_formatter(script, json!({}), &headers).unwrap();
+        assert_eq!(result["body"], "push");
+    }
+
+    #[test]
+    fn returns_array_as_json_array() {
+        let script = r#"
+            function format(data, headers)
+                data.items = {1, 2, 3}
+                data.body = "ok"
+                return data
+            end
+        "#;
+        let result = call_formatter(script, json!({}), &HashMap::new()).unwrap();
+        assert_eq!(result["items"], json!([1, 2, 3]));
+    }
+
+    #[test]
+    fn missing_format_function_is_error() {
+        let script = "-- no format function defined";
+        let err = call_formatter(script, json!({}), &HashMap::new());
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn syntax_error_is_error() {
+        let script = "function format(data end";
+        let err = call_formatter(script, json!({}), &HashMap::new());
+        assert!(err.is_err());
+    }
+}
