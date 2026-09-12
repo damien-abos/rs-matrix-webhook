@@ -35,8 +35,8 @@ RUN case "${BUILDARCH}" in \
     arm64) ZBUILD_ARCH=aarch64-unknown-linux-musl ;; \
     esac \
     && wget -qO- \
-    "https://github.com/rust-cross/cargo-zigbuild/releases/download/v${CARGO_ZIGBUILD_VERSION}/cargo-zigbuild-v${CARGO_ZIGBUILD_VERSION}.${ZBUILD_ARCH}.tar.gz" \
-    | tar -xz -C /usr/local/cargo/bin/
+    "https://github.com/rust-cross/cargo-zigbuild/releases/download/v${CARGO_ZIGBUILD_VERSION}/cargo-zigbuild-${ZBUILD_ARCH}-unknown-linux-musl.tar.xz" \
+    | tar -xJ -C /usr/local/cargo/bin/
 
 # Map Docker architecture names to Rust musl target triples.
 RUN case "${TARGETARCH}" in \
