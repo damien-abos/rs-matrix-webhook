@@ -17,6 +17,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  # Fix for cargo-zigbuild ARM64 cross-compilation: disable unsupported Cortex-A53 linker flag
+  RUSTFLAGS: "-C link-arg=-Wl,--no-fix-cortex-a53-843419"
 
 jobs:
   build:
@@ -93,6 +95,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Pass RUSTFLAGS to Docker build context
+          build-args: |
+            RUSTFLAGS=-C link-arg=-Wl,--no-fix-cortex-a53-843419
 
       # buildx cannot --push and --load simultaneously for multi-platform;
       # rebuild amd64 only from cache (fast) to get a local image for Trivy.
@@ -104,6 +109,8 @@ jobs:
           load: true
           tags: matrix-webhook:scan
           cache-from: type=gha
+          build-args: |
+            RUSTFLAGS=-C link-arg=-Wl,--no-fix-cortex-a53-843419
 
       - run: docker save matrix-webhook:scan -o /tmp/image-amd64.tar
 
@@ -118,6 +125,9 @@ jobs:
     runs-on: ubuntu-latest
     # Only on real pushes — no point measuring coverage on PRs or the weekly scan.
     if: github.event_name == 'push'
+    env:
+      # Inherit RUSTFLAGS from top-level env for consistency
+      RUSTFLAGS: "-C link-arg=-Wl,--no-fix-cortex-a53-843419"
     steps:
       - uses: actions/checkout@v7
 
