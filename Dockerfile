@@ -23,7 +23,7 @@ RUN case "${BUILDARCH}" in \
     *) echo "Unsupported build arch: ${BUILDARCH}" >&2; exit 1 ;; \
     esac \
     && wget -qO /tmp/zig.tar.xz \
-    "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz" \
+    "https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz" \
     && mkdir -p /opt/zig \
     && tar -xJf /tmp/zig.tar.xz --strip-components=1 -C /opt/zig \
     && ln -s /opt/zig/zig /usr/local/bin/zig \
