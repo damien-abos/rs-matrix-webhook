@@ -1,0 +1,6 @@
+[target.aarch64-unknown-linux-musl]
+# Fix for cargo-zigbuild ARM64 cross-compilation
+# Disables the unsupported Cortex-A53 linker flag (--fix-cortex-a53-843419)
+# that causes: "error: unsupported linker arg: --fix-cortex-a53-843419"
+# This flag is ONLY applied when building for aarch64 targets, not for x86_64
+rustflags = ["-C", "link-arg=-Wl,--no-fix-cortex-a53-843419"]
