@@ -36,7 +36,7 @@ RUN case "${BUILDARCH}" in \
     esac \
     && wget -qO- \
     "https://github.com/rust-cross/cargo-zigbuild/releases/download/v${CARGO_ZIGBUILD_VERSION}/cargo-zigbuild-${ZBUILD_ARCH}.tar.xz" \
-    | tar -xJ -C /usr/local/cargo/bin/
+    | tar -xJ --strip-components=1 -C /usr/local/cargo/bin/
 
 # Map Docker architecture names to Rust musl target triples.
 RUN case "${TARGETARCH}" in \
