@@ -1,5 +1,6 @@
 /target/
 config.toml
+!.cargo/config.toml
 lcov.info
 coverage/
 *.log

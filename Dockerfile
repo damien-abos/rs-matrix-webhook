@@ -7,8 +7,8 @@ FROM --platform=$BUILDPLATFORM rust:slim-bookworm AS builder
 
 ARG BUILDARCH
 ARG TARGETARCH
-ARG ZIG_VERSION=0.14.0
-ARG CARGO_ZIGBUILD_VERSION=0.19.8
+ARG ZIG_VERSION=0.16.0
+ARG CARGO_ZIGBUILD_VERSION=0.23.4
 
 # cmake: needed to build vendored Lua 5.4 from source.
 # wget:  download Zig and cargo-zigbuild pre-built binaries.
@@ -18,12 +18,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends cmake wget xz-u
 # Install Zig — architecture-aware so this also works when the builder is arm64
 # (e.g. Apple Silicon or a native arm64 CI runner).
 RUN case "${BUILDARCH}" in \
-        amd64) ZIG_ARCH=x86_64  ;; \
-        arm64) ZIG_ARCH=aarch64 ;; \
-        *) echo "Unsupported build arch: ${BUILDARCH}" >&2; exit 1 ;; \
+    amd64) ZIG_ARCH=x86_64  ;; \
+    arm64) ZIG_ARCH=aarch64 ;; \
+    *) echo "Unsupported build arch: ${BUILDARCH}" >&2; exit 1 ;; \
     esac \
     && wget -qO /tmp/zig.tar.xz \
-        "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz" \
+    "https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz" \
     && mkdir -p /opt/zig \
     && tar -xJf /tmp/zig.tar.xz --strip-components=1 -C /opt/zig \
     && ln -s /opt/zig/zig /usr/local/bin/zig \
@@ -31,18 +31,18 @@ RUN case "${BUILDARCH}" in \
 
 # Install cargo-zigbuild from its own pre-built static binary (no recompilation).
 RUN case "${BUILDARCH}" in \
-        amd64) ZBUILD_ARCH=x86_64-unknown-linux-musl  ;; \
-        arm64) ZBUILD_ARCH=aarch64-unknown-linux-musl ;; \
+    amd64) ZBUILD_ARCH=x86_64-unknown-linux-musl  ;; \
+    arm64) ZBUILD_ARCH=aarch64-unknown-linux-musl ;; \
     esac \
     && wget -qO- \
-        "https://github.com/rust-cross/cargo-zigbuild/releases/download/v${CARGO_ZIGBUILD_VERSION}/cargo-zigbuild-v${CARGO_ZIGBUILD_VERSION}.${ZBUILD_ARCH}.tar.gz" \
-    | tar -xz -C /usr/local/cargo/bin/
+    "https://github.com/rust-cross/cargo-zigbuild/releases/download/v${CARGO_ZIGBUILD_VERSION}/cargo-zigbuild-${ZBUILD_ARCH}.tar.xz" \
+    | tar -xJ --strip-components=1 -C /usr/local/cargo/bin/
 
 # Map Docker architecture names to Rust musl target triples.
 RUN case "${TARGETARCH}" in \
-        amd64) echo "x86_64-unknown-linux-musl"  ;; \
-        arm64) echo "aarch64-unknown-linux-musl" ;; \
-        *) echo "Unsupported target arch: ${TARGETARCH}" >&2; exit 1 ;; \
+    amd64) echo "x86_64-unknown-linux-musl"  ;; \
+    arm64) echo "aarch64-unknown-linux-musl" ;; \
+    *) echo "Unsupported target arch: ${TARGETARCH}" >&2; exit 1 ;; \
     esac > /rust-target
 
 RUN rustup target add "$(cat /rust-target)"
